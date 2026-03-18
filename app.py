@@ -8,102 +8,210 @@ st.set_page_config(
     layout="centered"
 )
 
+# Стили для единообразия шрифтов
+st.markdown("""
+<style>
+    /* Единый базовый размер для всех текстов */
+    .stApp, .stMarkdown, .stText, .stNumberInput, .stSelectbox, .stRadio {
+        font-size: 16px !important;
+    }
+    
+    /* Заголовки секций */
+    .section-header {
+        font-size: 20px !important;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 5px;
+    }
+    
+    /* Подзаголовки внутри секций */
+    .subsection-header {
+        font-size: 16px !important;
+        font-weight: 600;
+        color: #34495e;
+        margin-top: 10px;
+        margin-bottom: 5px;
+    }
+    
+    /* Метки полей ввода */
+    .input-label {
+        font-size: 16px !important;
+        font-weight: 500;
+        color: #7f8c8d;
+        margin-bottom: 2px;
+    }
+    
+    /* Важная информация (результаты) */
+    .result-value {
+        font-size: 16px !important;
+        font-weight: 700;
+        color: #27ae60;
+    }
+    
+    /* Информационные сообщения */
+    .info-text {
+        font-size: 16px !important;
+        font-style: italic;
+        color: #3498db;
+        background-color: #f0f8ff;
+        padding: 8px;
+        border-radius: 5px;
+    }
+    
+    /* Предупреждения */
+    .warning-text {
+        font-size: 16px !important;
+        font-weight: 600;
+        color: #e67e22;
+        text-decoration: underline dotted;
+    }
+    
+    /* Примечания внизу */
+    .caption-text {
+        font-size: 16px !important;
+        color: #95a5a6;
+        font-style: italic;
+    }
+    
+    /* Таблица результатов */
+    .dataframe {
+        font-size: 16px !important;
+    }
+    
+    .dataframe td, .dataframe th {
+        font-size: 16px !important;
+        padding: 8px !important;
+    }
+    
+    /* Итоговая сумма */
+    .total-amount {
+        font-size: 24px !important;
+        font-weight: 700;
+        color: #27ae60;
+        text-align: center;
+        padding: 15px;
+        background-color: #f1f8e9;
+        border-radius: 10px;
+        margin: 15px 0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🏠 Калькулятор ЖКХ")
+st.markdown(f'<p class="caption-text">📅 Актуально на {datetime.now().strftime("%d.%m.%Y")} | Тарифы утверждены РСТ</p>', unsafe_allow_html=True)
 st.markdown("---")
 
 # Боковая панель с настройками
 with st.sidebar:
-    st.header("⚙️ Параметры")
+    st.markdown('<p class="section-header">⚙️ Параметры</p>', unsafe_allow_html=True)
+    
     city = st.selectbox(
-        "Выберите город:",
+        "🏙️ **Город**",
         ["Геленджик", "Пыть-Ях"]
     )
     
     if city == "Пыть-Ях":
         stove_type = st.radio(
-            "Тип плиты:",
-            ["Газовая", "Электрическая"]
+            "🔥 **Тип плиты**",
+            ["Газовая", "Электрическая"],
+            help="Для электроплит действует пониженный тариф"
         )
     
     st.markdown("---")
-    st.caption(f"📅 Актуально на {datetime.now().strftime('%d.%m.%Y')}")
-    st.caption("📊 Тарифы утверждены РСТ")
+    st.markdown('<p class="caption-text">📊 Все тарифы соответствуют документам РСТ</p>', unsafe_allow_html=True)
 
 # Основной интерфейс
-st.header("👥 Данные проживания")
+st.markdown('<p class="section-header">👥 Данные проживания</p>', unsafe_allow_html=True)
+
 col_people, col_area = st.columns(2)
 with col_people:
-    people = st.number_input("Количество проживающих", min_value=1, value=2, step=1)
+    people = st.number_input("👨‍👩‍👧 Количество проживающих", min_value=1, value=2, step=1)
 with col_area:
-    area = st.number_input("Площадь квартиры (м²)", min_value=10.0, value=45.0, step=1.0)
+    area = st.number_input("🏠 Площадь квартиры (м²)", min_value=10.0, value=45.0, step=1.0)
 
 # Водоснабжение
-st.header("💧 Водоснабжение")
+st.markdown('<p class="section-header">💧 Водоснабжение</p>', unsafe_allow_html=True)
+
 col_cold, col_hot = st.columns(2)
 with col_cold:
-    cold_by_meter = st.checkbox("Есть счётчик воды", value=True)
+    st.markdown('<p class="subsection-header">❄️ Холодная вода</p>', unsafe_allow_html=True)
+    cold_by_meter = st.checkbox("Есть счётчик ХВС", value=True, key="cold_meter")
     if cold_by_meter:
-        cold_consumption = st.number_input("Показания холодной воды (м³)", min_value=0.0, value=10.0, step=0.1)
+        cold_consumption = st.number_input("Показания (м³)", min_value=0.0, value=10.0, step=0.1, key="cold_input")
     else:
-        st.info(f"Норматив: {8.5 if city == 'Геленджик' else 9.2} м³/чел")
-        cold_consumption = (8.5 if city == 'Геленджик' else 9.2) * people
+        cold_norm = 8.5 if city == 'Геленджик' else 9.2
+        st.markdown(f'<p class="info-text">📋 Норматив: {cold_norm} м³/чел</p>', unsafe_allow_html=True)
+        cold_consumption = cold_norm * people
 
 with col_hot:
-    hot_by_meter = st.checkbox("Есть счётчик ГВС", value=True)
+    st.markdown('<p class="subsection-header">🔥 Горячая вода</p>', unsafe_allow_html=True)
+    hot_by_meter = st.checkbox("Есть счётчик ГВС", value=True, key="hot_meter")
     if hot_by_meter:
-        hot_consumption = st.number_input("Показания горячей воды (м³)", min_value=0.0, value=5.0, step=0.1)
+        hot_consumption = st.number_input("Показания (м³)", min_value=0.0, value=5.0, step=0.1, key="hot_input")
     else:
-        hot_consumption = (8.5 if city == 'Геленджик' else 9.2) * people
+        hot_norm = 8.5 if city == 'Геленджик' else 9.2
+        st.markdown(f'<p class="info-text">📋 Норматив: {hot_norm} м³/чел</p>', unsafe_allow_html=True)
+        hot_consumption = hot_norm * people
 
 # Электроснабжение
-st.header("⚡ Электроснабжение")
-col_elec = st.columns(1)[0]
-elec_by_meter = st.checkbox("Есть счётчик электроэнергии", value=True)
+st.markdown('<p class="section-header">⚡ Электроснабжение</p>', unsafe_allow_html=True)
+
+elec_by_meter = st.checkbox("Есть счётчик электроэнергии", value=True, key="elec_meter")
 if elec_by_meter:
     if city == "Пыть-Ях" and stove_type == "Электрическая":
-        st.info("Для электроплит действует пониженный тариф")
-    elec_consumption = st.number_input("Показания электроэнергии (кВт·ч)", min_value=0.0, value=250.0, step=1.0)
+        st.markdown('<p class="info-text">💡 Для электроплит действует пониженный тариф 2.86 руб/кВт·ч</p>', unsafe_allow_html=True)
+    elec_consumption = st.number_input("Показания (кВт·ч)", min_value=0.0, value=250.0, step=1.0, key="elec_input")
 else:
-    elec_consumption = (180 if city == 'Геленджик' else 195) * people
+    elec_norm = 180 if city == 'Геленджик' else 195
+    st.markdown(f'<p class="info-text">📋 Норматив: {elec_norm} кВт·ч/чел</p>', unsafe_allow_html=True)
+    elec_consumption = elec_norm * people
 
 # Отопление
-st.header("🔥 Отопление")
+st.markdown('<p class="section-header">🔥 Отопление</p>', unsafe_allow_html=True)
+
 if city == "Геленджик":
-    st.info("Отопление считается по площади квартиры")
+    st.markdown('<p class="info-text">📐 Отопление считается по площади квартиры</p>', unsafe_allow_html=True)
     heating = area * 35.89
     heating_text = f"{area} м² × 35.89 руб/м²"
 else:  # Пыть-Ях
-    st.info("Отопление считается по фактическому потреблению тепла")
-    heating_consumption = st.number_input("Потребление тепла (Гкал)", min_value=0.0, value=2.5, step=0.1)
+    st.markdown('<p class="info-text">🌡️ Отопление считается по фактическому потреблению тепла</p>', unsafe_allow_html=True)
+    heating_consumption = st.number_input("Потребление тепла (Гкал)", min_value=0.0, value=2.5, step=0.1, key="heating_input")
     heating = heating_consumption * 2185.90
     heating_text = f"{heating_consumption} Гкал × 2185.90 руб/Гкал"
 
 # ТКО (мусор)
-st.header("🗑 ТКО (Вывоз мусора)")
+st.markdown('<p class="section-header">🗑 ТКО (Вывоз мусора)</p>', unsafe_allow_html=True)
+
 tko_year = 2.19  # норматив в год на человека
 tko_month = (tko_year / 12) * people
 tko_cost = tko_month * 1010.75
 
+st.markdown(f'<p class="info-text">📊 Расчёт: {tko_month:.2f} м³ × 1010.75 руб = {tko_cost:.2f} ₽</p>', unsafe_allow_html=True)
+
 # Кнопка расчёта
-if st.button("🧮 РАССЧИТАТЬ", type="primary", use_container_width=True):
+st.markdown("---")
+if st.button("🧮 **РАССЧИТАТЬ**", type="primary", use_container_width=True):
     st.markdown("---")
-    st.header("📊 ДЕТАЛЬНЫЙ РАСЧЁТ")
+    st.markdown('<p class="section-header">📊 ДЕТАЛЬНЫЙ РАСЧЁТ</p>', unsafe_allow_html=True)
     
     total = 0
     items = []
     
     # Вода
-    cold_water_cost = cold_consumption * 45.67 if city == 'Геленджик' else cold_consumption * 52.34
-    hot_water_cost = hot_consumption * 45.67 if city == 'Геленджик' else hot_consumption * 52.34
+    cold_water_cost = cold_consumption * (45.67 if city == 'Геленджик' else 52.34)
+    hot_water_cost = hot_consumption * (45.67 if city == 'Геленджик' else 52.34)
     
     items.append({
-        "Услуга": "💧 Холодная вода",
+        "Услуга": "❄️ Холодная вода",
         "Расчёт": f"{cold_consumption:.1f} м³ × {45.67 if city == 'Геленджик' else 52.34} руб",
         "Сумма": cold_water_cost
     })
     
     items.append({
-        "Услуга": "💧 Горячая вода",
+        "Услуга": "🔥 Горячая вода",
         "Расчёт": f"{hot_consumption:.1f} м³ × {45.67 if city == 'Геленджик' else 52.34} руб",
         "Сумма": hot_water_cost
     })
@@ -147,7 +255,7 @@ if st.button("🧮 РАССЧИТАТЬ", type="primary", use_container_width=Tr
     total = cold_water_cost + hot_water_cost + elec_cost + heating + tko_cost
     
     st.markdown("---")
-    st.success(f"### ИТОГО К ОПЛАТЕ: {total:.2f} ₽")
+    st.markdown(f'<div class="total-amount">ИТОГО: {total:.2f} ₽</div>', unsafe_allow_html=True)
     
     # Кнопка сохранения
     st.download_button(
@@ -176,11 +284,9 @@ if st.button("🧮 РАССЧИТАТЬ", type="primary", use_container_width=Tr
     
     # Совет по экономии
     st.markdown("---")
-    st.info("💡 Установите счётчики, если их ещё нет — это поможет платить по факту, а не по нормативу.")
+    st.markdown('<p class="info-text">💡 Установите счётчики, если их ещё нет — это поможет платить по факту, а не по нормативу.</p>', unsafe_allow_html=True)
 
 # Нижняя часть
 st.markdown("---")
-st.caption(
-    "✅ Тарифы актуальны на 2026 год (РСТ Краснодарского края и ХМАО)\n\n"
-    "📞 По вопросам: @urikonsult"
-)
+st.markdown('<p class="caption-text">✅ Тарифы актуальны на 2026 год (РСТ Краснодарского края и ХМАО)</p>', unsafe_allow_html=True)
+st.markdown('<p class="caption-text">📞 По вопросам: @urikonsult</p>', unsafe_allow_html=True)
