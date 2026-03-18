@@ -11,91 +11,176 @@ st.set_page_config(
 st.title("🏠 Калькулятор ЖКХ")
 st.markdown("---")
 
+# Боковая панель с настройками
 with st.sidebar:
-    st.header("Настройки")
+    st.header("⚙️ Параметры")
     city = st.selectbox(
         "Выберите город:",
         ["Геленджик", "Пыть-Ях"]
     )
+    
+    if city == "Пыть-Ях":
+        stove_type = st.radio(
+            "Тип плиты:",
+            ["Газовая", "Электрическая"]
+        )
+    
     st.markdown("---")
-    st.caption(f"Актуально на {datetime.now().strftime('%d.%m.%Y')}")
+    st.caption(f"📅 Актуально на {datetime.now().strftime('%d.%m.%Y')}")
+    st.caption("📊 Тарифы утверждены РСТ")
 
-col1, col2 = st.columns(2)
+# Основной интерфейс
+st.header("👥 Данные проживания")
+col_people, col_area = st.columns(2)
+with col_people:
+    people = st.number_input("Количество проживающих", min_value=1, value=2, step=1)
+with col_area:
+    area = st.number_input("Площадь квартиры (м²)", min_value=10.0, value=45.0, step=1.0)
 
-with col1:
-    st.subheader("💧 Водоснабжение")
-    cold_water = st.number_input("Холодная вода (м³)", min_value=0.0, value=5.0, step=0.1)
-    hot_water = st.number_input("Горячая вода (м³)", min_value=0.0, value=3.0, step=0.1)
+# Водоснабжение
+st.header("💧 Водоснабжение")
+col_cold, col_hot = st.columns(2)
+with col_cold:
+    cold_by_meter = st.checkbox("Есть счётчик воды", value=True)
+    if cold_by_meter:
+        cold_consumption = st.number_input("Показания холодной воды (м³)", min_value=0.0, value=10.0, step=0.1)
+    else:
+        st.info(f"Норматив: {8.5 if city == 'Геленджик' else 9.2} м³/чел")
+        cold_consumption = (8.5 if city == 'Геленджик' else 9.2) * people
 
-with col2:
-    st.subheader("⚡ Электроснабжение")
-    electricity_day = st.number_input("День (кВт·ч)", min_value=0.0, value=100.0, step=1.0)
-    electricity_night = st.number_input("Ночь (кВт·ч)", min_value=0.0, value=50.0, step=1.0)
+with col_hot:
+    hot_by_meter = st.checkbox("Есть счётчик ГВС", value=True)
+    if hot_by_meter:
+        hot_consumption = st.number_input("Показания горячей воды (м³)", min_value=0.0, value=5.0, step=0.1)
+    else:
+        hot_consumption = (8.5 if city == 'Геленджик' else 9.2) * people
 
+# Электроснабжение
+st.header("⚡ Электроснабжение")
+col_elec = st.columns(1)[0]
+elec_by_meter = st.checkbox("Есть счётчик электроэнергии", value=True)
+if elec_by_meter:
+    if city == "Пыть-Ях" and stove_type == "Электрическая":
+        st.info("Для электроплит действует пониженный тариф")
+    elec_consumption = st.number_input("Показания электроэнергии (кВт·ч)", min_value=0.0, value=250.0, step=1.0)
+else:
+    elec_consumption = (180 if city == 'Геленджик' else 195) * people
+
+# Отопление
+st.header("🔥 Отопление")
 if city == "Геленджик":
-    tariffs = {
-        "cold_water": 65.32,
-        "hot_water": 185.47,
-        "electricity_day": 6.83,
-        "electricity_night": 3.52
-    }
+    st.info("Отопление считается по площади квартиры")
+    heating = area * 35.89
+    heating_text = f"{area} м² × 35.89 руб/м²"
 else:  # Пыть-Ях
-    tariffs = {
-        "cold_water": 58.90,
-        "hot_water": 168.30,
-        "electricity_day": 5.94,
-        "electricity_night": 3.11
-    }
+    st.info("Отопление считается по фактическому потреблению тепла")
+    heating_consumption = st.number_input("Потребление тепла (Гкал)", min_value=0.0, value=2.5, step=0.1)
+    heating = heating_consumption * 2185.90
+    heating_text = f"{heating_consumption} Гкал × 2185.90 руб/Гкал"
 
-if st.button("🧮 Рассчитать", type="primary", use_container_width=True):
+# ТКО (мусор)
+st.header("🗑 ТКО (Вывоз мусора)")
+tko_year = 2.19  # норматив в год на человека
+tko_month = (tko_year / 12) * people
+tko_cost = tko_month * 1010.75
+
+# Кнопка расчёта
+if st.button("🧮 РАССЧИТАТЬ", type="primary", use_container_width=True):
+    st.markdown("---")
+    st.header("📊 ДЕТАЛЬНЫЙ РАСЧЁТ")
+    
     total = 0
+    items = []
+    
+    # Вода
+    cold_water_cost = cold_consumption * 45.67 if city == 'Геленджик' else cold_consumption * 52.34
+    hot_water_cost = hot_consumption * 45.67 if city == 'Геленджик' else hot_consumption * 52.34
+    
+    items.append({
+        "Услуга": "💧 Холодная вода",
+        "Расчёт": f"{cold_consumption:.1f} м³ × {45.67 if city == 'Геленджик' else 52.34} руб",
+        "Сумма": cold_water_cost
+    })
+    
+    items.append({
+        "Услуга": "💧 Горячая вода",
+        "Расчёт": f"{hot_consumption:.1f} м³ × {45.67 if city == 'Геленджик' else 52.34} руб",
+        "Сумма": hot_water_cost
+    })
+    
+    # Электричество
+    if city == "Пыть-Ях" and stove_type == "Электрическая":
+        elec_tariff = 2.86
+        elec_note = "(электроплита)"
+    else:
+        elec_tariff = 5.23 if city == 'Геленджик' else 4.09
+        elec_note = ""
+    
+    elec_cost = elec_consumption * elec_tariff
+    items.append({
+        "Услуга": "⚡ Электроэнергия",
+        "Расчёт": f"{elec_consumption:.0f} кВт·ч × {elec_tariff} руб {elec_note}",
+        "Сумма": elec_cost
+    })
+    
+    # Отопление
+    items.append({
+        "Услуга": "🔥 Отопление",
+        "Расчёт": heating_text,
+        "Сумма": heating
+    })
+    
+    # ТКО
+    items.append({
+        "Услуга": "🗑 Вывоз мусора",
+        "Расчёт": f"{tko_month:.2f} м³ × 1010.75 руб",
+        "Сумма": tko_cost
+    })
+    
+    # Создаём таблицу
+    df = pd.DataFrame(items)
+    df["Сумма"] = df["Сумма"].apply(lambda x: f"{x:.2f} ₽")
+    
+    st.table(df)
+    
+    # Итог
+    total = cold_water_cost + hot_water_cost + elec_cost + heating + tko_cost
     
     st.markdown("---")
-    st.subheader("📊 Результаты расчёта")
+    st.success(f"### ИТОГО К ОПЛАТЕ: {total:.2f} ₽")
     
-    col_a, col_b, col_c = st.columns(3)
-    
-    with col_a:
-        cold_cost = cold_water * tariffs['cold_water']
-        st.metric("Холодная вода", f"{cold_water:.1f} м³", f"{cold_cost:.2f} ₽")
-        total += cold_cost
-    
-    with col_b:
-        hot_cost = hot_water * tariffs['hot_water']
-        st.metric("Горячая вода", f"{hot_water:.1f} м³", f"{hot_cost:.2f} ₽")
-        total += hot_cost
-    
-    with col_c:
-        day_cost = electricity_day * tariffs['electricity_day']
-        st.metric("Электричество день", f"{electricity_day:.0f} кВт·ч", f"{day_cost:.2f} ₽")
-        total += day_cost
-    
-    night_cost = electricity_night * tariffs['electricity_night']
-    st.metric("Электричество ночь", f"{electricity_night:.0f} кВт·ч", f"{night_cost:.2f} ₽")
-    total += night_cost
-    
-    st.markdown("---")
-    st.success(f"### ИТОГО: {total:.2f} ₽")
-    
+    # Кнопка сохранения
     st.download_button(
-        "📥 Сохранить расчёт",
-        f"""Результаты расчёта ЖКХ
-Город: {city}
+        "📥 Сохранить расчёт в файл",
+        f"""РАСЧЁТ КОММУНАЛЬНЫХ ПЛАТЕЖЕЙ
 Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}
+Город: {city}
+Проживает: {people} чел.
+Площадь: {area} м²
 
-Показания:
-- Холодная вода: {cold_water} м³
-- Горячая вода: {hot_water} м³
-- Электричество (день): {electricity_day} кВт·ч
-- Электричество (ночь): {electricity_night} кВт·ч
+{'-'*40}
 
-Итоговая сумма: {total:.2f} ₽""",
-        file_name=f"jkh_calc_{datetime.now().strftime('%Y%m%d')}.txt",
+{cold_water_cost:.2f} ₽ – Холодная вода ({cold_consumption:.1f} м³)
+{hot_water_cost:.2f} ₽ – Горячая вода ({hot_consumption:.1f} м³)
+{elec_cost:.2f} ₽ – Электроэнергия ({elec_consumption:.0f} кВт·ч)
+{heating:.2f} ₽ – Отопление
+{tko_cost:.2f} ₽ – Вывоз мусора
+
+{'-'*40}
+ИТОГО: {total:.2f} ₽
+
+Тарифы утверждены РСТ на 2026 год""",
+        file_name=f"jkh_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
         mime="text/plain"
     )
+    
+    # Совет по экономии
+    st.markdown("---")
+    st.info("💡 Установите счётчики, если их ещё нет — это поможет платить по факту, а не по нормативу.")
 
+# Нижняя часть
 st.markdown("---")
 st.caption(
-    "✅ Тарифы актуальны на 2026 год\n\n"
+    "✅ Тарифы актуальны на 2026 год (РСТ Краснодарского края и ХМАО)\n\n"
     "📞 По вопросам: @urikonsult"
 )
